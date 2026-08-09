@@ -197,6 +197,8 @@ Killer Gorilla, Mr. Ee!, Flappy Bird, Painter, Super Breakout, BBC Tetris,
 Citadel, and Elite. Profiles define startup automation and controls; the games
 themselves are user-supplied and are not in this repository.
 
+For Killer Gorilla, Touch or a BLE keyboard is recommended instead of Tilt.
+
 ## Test
 
 The host harness runs the portable CPU, memory, VIA, video, sound, and 8271 code
