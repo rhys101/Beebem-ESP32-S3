@@ -163,7 +163,7 @@ constexpr game_profile_t kGames[] = {
     {"KILLER GORILLA", "TOUCH / BLE KEYBOARD RECOMMENDED",
      BC32_DISC_KILLER_GORILLA,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
-     {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(6, 2),
+     {no_key(), no_key(), no_key(), no_key()}, key(6, 2), key(4, 9),
      STARTUP_SPACES(3), 150, true, 0, 300},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
@@ -1443,7 +1443,6 @@ void apply_action(const bc32_input_event_t &event)
     action_key_down[slot] = selected;
     set_matrix_key(action_key_down[slot], true);
     if (active_game->disc == BC32_DISC_KILLER_GORILLA &&
-        !event.action.secondary &&
         selected.valid && selected.row == 4 && selected.column == 9) {
         // Killer Gorilla samples RETURN in narrow windows. Three short pulses
         // make one physical press reliable without leaving the key held.
@@ -1513,13 +1512,9 @@ void set_touch_action(bool down)
 {
     const bc32_input_event_t action = {
         .kind = BC32_INPUT_ACTION,
-        // Killer Gorilla reserves the secondary physical button for SPACE so
-        // games can be replayed, but its centre touch action should remain the
-        // primary RETURN/jump control.
-        .action = {.secondary = active_game == nullptr ||
-                                        active_game->disc !=
-                                            BC32_DISC_KILLER_GORILLA,
-                   .down = down},
+        // Centre touch follows the secondary action. For Killer Gorilla this
+        // remains RETURN/jump after swapping the two physical buttons.
+        .action = {.secondary = true, .down = down},
     };
     apply_action(action);
 }
