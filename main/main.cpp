@@ -104,7 +104,6 @@ struct game_profile_t {
     uint16_t tilt_vertical_sensitivity_percent = 0;
     uint8_t direction_pulse_fields = 0;
     uint8_t tilt_pulse_repeat_fields = 0;
-    uint8_t action_min_hold_fields = 0;
 };
 
 #define STARTUP_SPACES(count) \
@@ -163,9 +162,9 @@ constexpr game_profile_t kGames[] = {
      STARTUP_NONE},
     {"KILLER GORILLA", "PWR: JUMP   BTN: SPACE/REPLAY",
      BC32_DISC_KILLER_GORILLA,
-     {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
+     {key(6, 1), key(4, 2), key(6, 8), key(4, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
-     STARTUP_SPACES(3), 150, true, 0, 500, 0, 0, 12},
+     STARTUP_SPACES(3), 150, true, 0, 500},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(4, 9),
@@ -186,7 +185,7 @@ constexpr game_profile_t kGames[] = {
     {"BBC TETRIS", "Z/X MOVE   BUTTONS: ROTATE DROP", BC32_DISC_BBC_TETRIS,
      {key(6, 1), key(4, 2), no_key(), no_key()},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(6, 2),
-     {key(3, 0), no_key(), no_key()}, 1, false, 67, true, 0, 0, 3, 15},
+     {key(3, 0), no_key(), no_key()}, 1, false, 67, true, 0, 0, 2, 4},
     {"CITADEL", "MOVE: Z X * ?   BUTTONS: RETURN SPACE", BC32_DISC_CITADEL,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
@@ -276,8 +275,8 @@ uint8_t matrix_key_holds[8][10];
 uint8_t direction_hold_count[4];
 bool direction_repeat_released[4];
 uint32_t direction_repeat_deadline[4];
-bool action_release_pending[2];
-uint32_t action_release_deadline[2];
+uint8_t killer_jump_pulse_phase;
+uint32_t killer_jump_pulse_deadline;
 unsigned chuckie_action_count;
 unsigned startup_action_count;
 touch_control_t gameplay_touch_control = kTouchNone;
@@ -1404,24 +1403,10 @@ void apply_action(const bc32_input_event_t &event)
             action_hold_count[slot]++ != 0) {
             return;
         }
-        action_release_pending[slot] = false;
-        action_release_deadline[slot] =
-            active_game != nullptr && active_game->action_min_hold_fields != 0
-                ? bbc_core_frame_count() + active_game->action_min_hold_fields
-                : 0;
     } else {
-        if (action_hold_count[slot] == 1 && active_game != nullptr &&
-            active_game->action_min_hold_fields != 0 &&
-            static_cast<int32_t>(bbc_core_frame_count() -
-                                 action_release_deadline[slot]) < 0) {
-            action_release_pending[slot] = true;
-            return;
-        }
         if (action_hold_count[slot] == 0 || --action_hold_count[slot] != 0) {
             return;
         }
-        action_release_pending[slot] = false;
-        action_release_deadline[slot] = 0;
         set_matrix_key(action_key_down[slot], false);
         action_key_down[slot] = no_key();
         if (action_joystick_down[slot]) {
@@ -1457,6 +1442,14 @@ void apply_action(const bc32_input_event_t &event)
 
     action_key_down[slot] = selected;
     set_matrix_key(action_key_down[slot], true);
+    if (active_game->disc == BC32_DISC_KILLER_GORILLA &&
+        !event.action.secondary &&
+        startup_action_count >= active_game->startup_key_count) {
+        // Killer Gorilla samples RETURN in narrow windows. Three short pulses
+        // make one physical press reliable without leaving the key held.
+        killer_jump_pulse_phase = 1;
+        killer_jump_pulse_deadline = bbc_core_frame_count() + 2;
+    }
     // In Keyboard mode keep joystick fire inactive. Elite permanently switches
     // its primary flight controls from keyboard to analogue joystick as soon
     // as it sees joystick fire; the profile's BBC key remains usable instead.
@@ -1466,20 +1459,21 @@ void apply_action(const bc32_input_event_t &event)
     }
 }
 
-void service_action_release()
+void service_killer_jump_pulse()
 {
+    if (killer_jump_pulse_phase == 0) return;
     const uint32_t frame = bbc_core_frame_count();
-    for (unsigned slot = 0; slot < 2; ++slot) {
-        if (!action_release_pending[slot] ||
-            static_cast<int32_t>(frame - action_release_deadline[slot]) < 0) {
-            continue;
-        }
-        action_release_pending[slot] = false;
-        const bc32_input_event_t release = {
-            .kind = BC32_INPUT_ACTION,
-            .action = {.secondary = slot != 0, .down = false},
-        };
-        apply_action(release);
+    if (static_cast<int32_t>(frame - killer_jump_pulse_deadline) < 0) return;
+
+    const bool press = killer_jump_pulse_phase == 2 ||
+                       killer_jump_pulse_phase == 4;
+    set_matrix_key(key(4, 9), press);
+    if (killer_jump_pulse_phase == 5) {
+        killer_jump_pulse_phase = 0;
+        killer_jump_pulse_deadline = 0;
+    } else {
+        ++killer_jump_pulse_phase;
+        killer_jump_pulse_deadline = frame + 2;
     }
 }
 
@@ -1609,8 +1603,6 @@ void release_gameplay_controls()
         }
     }
     for (unsigned slot = 0; slot < 2; ++slot) {
-        action_release_pending[slot] = false;
-        action_release_deadline[slot] = 0;
         while (action_hold_count[slot] != 0) {
             const bc32_input_event_t release = {
                 .kind = BC32_INPUT_ACTION,
@@ -1619,6 +1611,9 @@ void release_gameplay_controls()
             apply_action(release);
         }
     }
+    killer_jump_pulse_phase = 0;
+    killer_jump_pulse_deadline = 0;
+    set_matrix_key(key(4, 9), false);
     bbc_core_set_joystick(32768, 32768);
 }
 
@@ -1642,8 +1637,6 @@ void reset_game_session_state()
     memset(direction_repeat_released, 0, sizeof(direction_repeat_released));
     memset(direction_repeat_deadline, 0, sizeof(direction_repeat_deadline));
     memset(action_hold_count, 0, sizeof(action_hold_count));
-    memset(action_release_pending, 0, sizeof(action_release_pending));
-    memset(action_release_deadline, 0, sizeof(action_release_deadline));
     action_key_down[0] = no_key();
     action_key_down[1] = no_key();
     action_joystick_down[0] = false;
@@ -1658,6 +1651,8 @@ void reset_game_session_state()
     chuckie_first_action_field = 0;
     chuckie_start_state = chuckie_start_state_t::idle;
     chuckie_start_deadline = 0;
+    killer_jump_pulse_phase = 0;
+    killer_jump_pulse_deadline = 0;
 }
 
 void open_character_picker()
@@ -1841,7 +1836,7 @@ void emulator_task(void *)
         if (__atomic_load_n(&emulator_paused, __ATOMIC_ACQUIRE)) continue;
         service_picker_key();
         service_game_macro();
-        service_action_release();
+        service_killer_jump_pulse();
         service_direction_repeat();
         const unsigned completed = bbc_core_run_batch();
         if (completed == 0) {
