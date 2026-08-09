@@ -2,7 +2,7 @@
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-VERSION=${BEEBEM_VERSION:-v1.3}
+VERSION=${BEEBEM_VERSION:-v1.4}
 RELEASE_IMAGE="$PROJECT_ROOT/dist/beebem-esp32-s3-$VERSION.bin"
 mkdir -p "$PROJECT_ROOT/dist"
 "$PROJECT_ROOT/scripts/idf.sh" build

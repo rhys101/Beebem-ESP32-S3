@@ -2,7 +2,7 @@
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-VERSION=${BEEBEM_VERSION:-v1.3}
+VERSION=${BEEBEM_VERSION:-v1.4}
 IMAGE=${2:-"$PROJECT_ROOT/dist/beebem-esp32-s3-$VERSION.bin"}
 PORT=${1:-}
 
