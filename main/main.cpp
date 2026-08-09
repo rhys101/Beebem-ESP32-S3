@@ -159,7 +159,7 @@ constexpr game_profile_t kGames[] = {
      BC32_DISC_KILLER_GORILLA,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(4, 9),
-     STARTUP_SPACES(2), 150},
+     STARTUP_SPACES(3), 150},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(4, 9),
