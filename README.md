@@ -79,6 +79,24 @@ source tag from which it was built.
      write-flash 0x0 "$IMAGE"
    ```
 
+5. On Linux, this equivalent block detects the first `/dev/ttyACM*` device:
+
+   ```sh
+   set -eu
+   IMAGE=$(mktemp /tmp/beebem-esp32-s3.XXXXXX)
+   trap 'rm -f "$IMAGE"' EXIT
+   PORT=$(find /dev -maxdepth 1 -name 'ttyACM*' -print | head -n 1)
+   test -n "$PORT" || { echo "No ESP32-S3 serial port found" >&2; exit 1; }
+   curl --fail --location \
+     https://bbcmicro.co.uk/flash/beebem-esp32-s3-v1.bin --output "$IMAGE"
+   uvx --from esptool esptool --chip esp32s3 --port "$PORT" --baud 460800 \
+     write-flash 0x0 "$IMAGE"
+   ```
+
+   If opening the port reports `Permission denied`, add your user to the serial
+   device group with `sudo usermod -aG dialout "$USER"`, then log out and back
+   in before retrying. Some distributions use `uucp` instead of `dialout`.
+
 The first boot takes a little longer while writable storage is initialized.
 The merged image ends before the storage partition, so existing game saves and
 high scores are preserved. It does cover NVS, so pair the BLE keyboard again
