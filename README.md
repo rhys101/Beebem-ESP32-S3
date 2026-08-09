@@ -80,8 +80,9 @@ source tag from which it was built.
    ```
 
 The first boot takes a little longer while writable storage is initialized.
-Flashing this image normally preserves the storage partition. An explicit
-`erase-flash` removes pairings, game saves, and high scores.
+The merged image ends before the storage partition, so existing game saves and
+high scores are preserved. It does cover NVS, so pair the BLE keyboard again
+after a full-image update. An explicit `erase-flash` also removes storage.
 
 ## Build from source
 
