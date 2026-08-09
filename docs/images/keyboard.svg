@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="896" height="736" viewBox="0 0 448 368">
+ <rect width="448" height="368" rx="24" fill="#07101a"/><text x="224" y="43" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="22" font-weight="700">PAIR BLE KEYBOARD</text>
+ <rect x="115" y="69" width="218" height="125" rx="16" fill="#18263a" stroke="#7387a5"/><g fill="#6a7c95"> <rect x="135" y="91" width="28" height="20" rx="4"/><rect x="169" y="91" width="28" height="20" rx="4"/><rect x="203" y="91" width="28" height="20" rx="4"/><rect x="237" y="91" width="28" height="20" rx="4"/><rect x="271" y="91" width="42" height="20" rx="4"/><rect x="135" y="119" width="178" height="20" rx="4"/><rect x="135" y="147" width="178" height="25" rx="4"/></g>
+ <text x="224" y="228" text-anchor="middle" fill="#aab8cf" font-family="system-ui" font-size="14">Type this code, then press Return</text><text x="224" y="269" text-anchor="middle" fill="#ffdc63" font-family="ui-monospace,monospace" font-size="34" font-weight="700">123456</text>
+ <rect x="81" y="297" width="286" height="39" rx="19" fill="#1ec3a8"/><text x="224" y="323" text-anchor="middle" fill="#061713" font-family="system-ui" font-size="15" font-weight="700">BLE KEYBOARD CONNECTED</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="896" height="736" viewBox="0 0 448 368">
+ <rect width="448" height="368" rx="24" fill="#080d19"/><text x="224" y="48" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="21" font-weight="700">SHAKE KEY SELECTOR</text>
+ <path d="M22 182h404" stroke="#3c4962" stroke-width="3"/><g font-family="system-ui" text-anchor="middle"><text x="42" y="190" fill="#77859e" font-size="29">8</text><text x="101" y="190" fill="#9ba8bf" font-size="29">9</text>
+ <rect x="128" y="132" width="108" height="98" rx="15" fill="#8b3550"/><text x="182" y="188" fill="#fff" font-size="17" font-weight="700">RESTART</text>
+ <rect x="249" y="118" width="104" height="126" rx="17" fill="#1ec3a8" stroke="#fff" stroke-width="4"/><text x="301" y="200" fill="#071713" font-size="49" font-weight="700">A</text><text x="397" y="190" fill="#9ba8bf" font-size="29">B</text></g>
+ <path d="m30 282 30-18v36zM418 282l-30-18v36z" fill="#ffdc63"/><text x="224" y="310" text-anchor="middle" fill="#dce6f8" font-family="system-ui" font-size="14">Swipe to browse · tap the centre card</text>
+</svg>

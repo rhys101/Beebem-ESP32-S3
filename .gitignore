@@ -1,0 +1,32 @@
+build/
+dist/
+sdkconfig
+sdkconfig.old
+.cache/
+.venv/
+.deps/
+managed_components/
+__pycache__/
+*.pyc
+.DS_Store
+tests/host/build*/
+tests/host/*.ppm
+tests/host/*.png
+
+# ROM and disc images are user-supplied runtime data.
+roms/
+discs/
+local/
+*.rom
+*.ssd
+*.dsd
+*.adl
+*.adf
+*.uef
+components/assets/fonts/teletext.fnt
+
+# Locally supplied launcher artwork is not redistributed.
+components/assets/screenshots/*.png
+components/assets/screenshots/*.jpg
+components/assets/screenshots/*.jpeg
+components/assets/screenshots/*.rle

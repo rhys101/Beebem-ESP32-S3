@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="896" height="736" viewBox="0 0 448 368">
+ <rect width="448" height="368" rx="24" fill="#070b17"/><rect x="12" y="12" width="424" height="344" rx="18" fill="#111a31" stroke="#66738f"/>
+ <text x="224" y="39" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="17" font-weight="700">PLANET PATROL</text>
+ <rect x="28" y="53" width="392" height="238" rx="8" fill="#172b4d"/><circle cx="90" cy="112" r="38" fill="#cf6"/><circle cx="365" cy="90" r="14" fill="#f6c945"/>
+ <path d="M55 257h335M55 238h335M55 219h335" stroke="#536f82"/><path d="m204 169 42 18-42 18 9-18z" fill="#ffde59"/>
+ <circle cx="224" cy="173" r="38" fill="#0b1020" fill-opacity=".72" stroke="#fff" stroke-width="3"/><path d="m216 152 27 21-27 21z" fill="#fff"/>
+ <rect x="42" y="309" width="102" height="32" rx="16" fill="#19b7a5"/><text x="93" y="331" text-anchor="middle" fill="#071513" font-family="system-ui" font-size="14" font-weight="700">TILT</text>
+ <rect x="173" y="309" width="102" height="32" rx="16" fill="#29344e"/><text x="224" y="331" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="14">TOUCH</text>
+ <rect x="304" y="309" width="102" height="32" rx="16" fill="#29344e"/><text x="355" y="331" text-anchor="middle" fill="#fff" font-family="system-ui" font-size="13">KEYBOARD</text>
+</svg>
