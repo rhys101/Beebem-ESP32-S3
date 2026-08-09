@@ -6,13 +6,6 @@ It runs the Linux/SDL BeebEm core directly on the ESP32-S3, presents a centred
 4:3 BBC display on the 448×368 AMOLED, drives the onboard speaker, and supports
 tilt, eight-way touch, physical buttons, and a BLE keyboard.
 
-> [!IMPORTANT]
-> The public source tree does not include BBC ROMs, commercial game discs,
-> saves, or archive screenshots. A precompiled release can only be published by
-> someone who has redistribution permission for every embedded asset and who
-> complies with BeebEm's source-distribution terms. See [Licensing](#licensing)
-> and [supplying assets](docs/ASSETS.md).
-
 ## What it looks like
 
 | Game launcher | Gameplay |
@@ -54,8 +47,7 @@ redistribution permissions. A full image is deliberately paired with the exact
 source tag from which it was built.
 
 1. Download the complete v1 image from
-   [BBCMicro.co.uk](https://bbcmicro.co.uk/flash/beebem-esp32-s3-v1.bin).
-   This is the agreed placeholder URL until BBCMicro.co.uk publishes the file.
+   [https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin(https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin).
 2. Connect the board's USB-C data port. Normally no button is needed; if the
    port is absent, hold **BOOT**, tap **RESET**, then release **BOOT**.
 3. Install [uv](https://docs.astral.sh/uv/) and list the serial port:
@@ -78,7 +70,7 @@ source tag from which it was built.
    PORT=$(find /dev -maxdepth 1 -name 'cu.usbmodem*' -print | head -n 1)
    test -n "$PORT" || { echo "No ESP32-S3 serial port found" >&2; exit 1; }
    curl --fail --location \
-     https://bbcmicro.co.uk/flash/beebem-esp32-s3-v1.bin --output "$IMAGE"
+     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin --output "$IMAGE"
    uvx --from esptool esptool --chip esp32s3 --port "$PORT" --baud 460800 \
      write-flash 0x0 "$IMAGE"
    ```
@@ -92,7 +84,7 @@ source tag from which it was built.
    PORT=$(find /dev -maxdepth 1 -name 'ttyACM*' -print | head -n 1)
    test -n "$PORT" || { echo "No ESP32-S3 serial port found" >&2; exit 1; }
    curl --fail --location \
-     https://bbcmicro.co.uk/flash/beebem-esp32-s3-v1.bin --output "$IMAGE"
+     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin --output "$IMAGE"
    uvx --from esptool esptool --chip esp32s3 --port "$PORT" --baud 460800 \
      write-flash 0x0 "$IMAGE"
    ```
@@ -231,4 +223,4 @@ in [LICENSES/BeebEm.txt](LICENSES/BeebEm.txt). Original ESP32 port code is MIT
 licensed; bundled display and sensor components retain their own licence files.
 
 BBC ROMs, game media, saves, names, and screenshots remain the property of
-their respective owners. Their absence from this repository is intentional.
+their respective owners.
