@@ -9,13 +9,13 @@
 #define EXPANDER_INPUT_REGISTER 0x00
 #define EXPANDER_CONFIG_REGISTER 0x03
 #define POWER_BUTTON_BIT (1U << 4)
-#define SHORT_PRESS_MAX_MS 1500
 #define KEY_HOLD_MS 80
 
 static const char *TAG = "power_button";
 static i2c_master_dev_handle_t s_expander;
 static bc32_input_callback_t s_callback;
 static void *s_callback_context;
+static bool s_initial_pressed;
 
 static esp_err_t read_register(uint8_t reg, uint8_t *value)
 {
@@ -40,18 +40,20 @@ static void emit_action(bool secondary, bool down)
 static void button_task(void *argument)
 {
     (void)argument;
-    bool stable_pressed = false;
+    // PWR may still be held when battery power has just been switched on. Use
+    // that as the initial state without turning the power-on gesture into an
+    // emulator action; only a subsequent press edge is actionable.
+    bool stable_pressed = s_initial_pressed;
     unsigned changed_samples = 0;
     unsigned read_failures = 0;
-    int64_t pressed_at = 0;
+    int64_t pressed_at = stable_pressed ? esp_timer_get_time() : 0;
     bool action_held = false;
-    bool action_secondary = false;
     int64_t action_release_at = 0;
 
     for (;;) {
         const int64_t now = esp_timer_get_time();
         if (action_held && now >= action_release_at) {
-            emit_action(action_secondary, false);
+            emit_action(false, false);
             action_held = false;
         }
 
@@ -67,23 +69,17 @@ static void button_task(void *argument)
                 if (pressed) {
                     pressed_at = esp_timer_get_time();
                     ESP_LOGI(TAG, "PWR down (input 0x%02x)", input);
+                    if (action_held) emit_action(false, false);
+                    emit_action(false, true);
+                    action_held = true;
+                    action_release_at =
+                        esp_timer_get_time() + KEY_HOLD_MS * 1000LL;
+                    ESP_LOGI(TAG, "primary action");
                 } else {
                     const int64_t held_ms =
                         (esp_timer_get_time() - pressed_at) / 1000;
                     ESP_LOGI(TAG, "PWR up after %lld ms (input 0x%02x)",
                              (long long)held_ms, input);
-                    if (held_ms <= SHORT_PRESS_MAX_MS) {
-                        if (action_held) emit_action(action_secondary, false);
-                        // The board has a dedicated BOOT/secondary button.
-                        // Keep PWR unambiguously primary even on a relaxed tap.
-                        action_secondary = false;
-                        emit_action(action_secondary, true);
-                        action_held = true;
-                        action_release_at =
-                            esp_timer_get_time() + KEY_HOLD_MS * 1000LL;
-                        ESP_LOGI(TAG, "%s action",
-                                 action_secondary ? "secondary" : "primary");
-                    }
                 }
             }
         } else if (++read_failures == 50) {
@@ -118,6 +114,7 @@ esp_err_t bc32_power_button_init(i2c_master_bus_handle_t bus,
     uint8_t input = 0;
     result = read_register(EXPANDER_INPUT_REGISTER, &input);
     if (result != ESP_OK) return result;
+    s_initial_pressed = (input & POWER_BUTTON_BIT) != 0;
 
     s_callback = callback;
     s_callback_context = context;
