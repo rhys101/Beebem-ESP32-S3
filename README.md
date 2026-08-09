@@ -15,16 +15,20 @@ tilt, eight-way touch, physical buttons, and a BLE keyboard.
 
 ## What it looks like
 
-| Launcher and input choice | Tilt calibration |
+| Game launcher | Gameplay |
 | --- | --- |
-| ![Game carousel with central Play control and Tilt, Touch, and Keyboard choices](docs/images/launcher.svg) | ![Holding the console at the playing angle during tilt calibration](docs/images/tilt.svg) |
+| ![Arcadians in the game carousel with central Play control and Tilt, Touch, and Keyboard choices](docs/images/arcadians.png) | ![Repton running on the emulated BBC Micro](docs/images/repton_play.png) |
 
-| Eight-way touch | BLE keyboard | Shake key selector |
+| Tilt calibration | Eight-way touch |
+| --- | --- |
+| ![Holding the console at the playing angle during tilt calibration](docs/images/calibrating_tilt.png) | ![Touchscreen split into eight directions with a central action area](docs/images/touch.svg) |
+
+| BLE pairing | BLE connected | Shake key selector |
 | --- | --- | --- |
-| ![Touchscreen split into eight directions with a central action area](docs/images/touch.svg) | ![Bluetooth keyboard pairing confirmation and input choice](docs/images/keyboard.svg) | ![Scrollable built-in key selector with restart, numbers, letters, and symbols](docs/images/key-selector.svg) |
+| ![Bluetooth keyboard passkey pairing prompt](docs/images/ble_pairing.png) | ![Bluetooth keyboard connected confirmation with Keyboard mode unlocked](docs/images/ble_paired.png) | ![Scrollable built-in key selector with restart, numbers, letters, and symbols](docs/images/key_selector.png) |
 
-The illustrations use original placeholder art so the documentation can be
-redistributed. A local build shows the screenshots supplied with its game media.
+The hardware screenshots were captured directly from the ESP32-S3 framebuffer;
+the touch-control image remains a diagram so its eight active regions are clear.
 
 ## Features
 
