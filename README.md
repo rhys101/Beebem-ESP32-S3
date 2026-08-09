@@ -144,11 +144,12 @@ scripts/build-and-flash.sh PORT
 
 ## Launcher and controls
 
-Swipe across the game image to browse. Tap the circular Play button, or tap
-**PWR**, to start. Input selection is accepted only in the lower third of the
-launcher, which prevents an accidental change while swiping. Keyboard is
-selectable only after a live BLE connection and becomes the default when one
-is connected.
+Swipe across the game image to browse, or use the Left/Right arrow keys on a
+connected BLE keyboard. Tilting does not change the selected game. Tap the
+circular Play button, or tap **PWR**, to start. Input selection is accepted only
+in the lower third of the launcher, which prevents an accidental change while
+swiping. Keyboard is selectable only after a live BLE connection and becomes
+the default when one is connected.
 
 ### Tilt
 

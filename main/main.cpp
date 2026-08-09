@@ -934,7 +934,8 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
     uint32_t keyboard_passkey = bc32_ble_keyboard_pairing_passkey();
     render_launcher(framebuffer, selected_game, *mode, keyboard_connected);
     render_frame(framebuffer);
-    ESP_LOGI(kTag, "launcher ready: swipe games, tap PLAY to launch");
+    ESP_LOGI(kTag,
+             "launcher ready: swipe or BLE arrows to browse, tap PLAY to launch");
     if (keyboard_connected) {
         render_keyboard_notice(framebuffer, true);
         render_frame(framebuffer);
@@ -1007,24 +1008,10 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
         bool redraw = false;
         bool launch = false;
         int page_direction = 0;
-        if (event.kind == BC32_INPUT_DIRECTION && event.direction.down) {
-            switch (event.direction.direction) {
-            case BC32_DIRECTION_UP:
-            case BC32_DIRECTION_DOWN:
-                // Changing the play angle in the launcher must not change the
-                // selected input method. Use the bottom touch controls (or a
-                // connected keyboard) to choose Tilt/Touch/Keyboard.
-                break;
-            case BC32_DIRECTION_LEFT:
-                selected_game = (selected_game + kGameCount - 1) % kGameCount;
-                page_direction = -1;
-                break;
-            case BC32_DIRECTION_RIGHT:
-                selected_game = (selected_game + 1) % kGameCount;
-                page_direction = 1;
-                break;
-            }
-        } else if (event.kind == BC32_INPUT_KEY && event.key.down) {
+        // Motion direction events are deliberately ignored in the launcher:
+        // browse games with a horizontal swipe or BLE Left/Right arrows. Tilt
+        // starts controlling movement only after a game has launched.
+        if (event.kind == BC32_INPUT_KEY && event.key.down) {
             if (matrix_key_matches(event, key(1, 9))) {
                 selected_game = (selected_game + kGameCount - 1) % kGameCount;
                 page_direction = -1;
