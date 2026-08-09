@@ -21,7 +21,7 @@ tilt, eight-way touch, physical buttons, and a BLE keyboard.
 
 | Tilt calibration | Eight-way touch |
 | --- | --- |
-| ![Holding the console at the playing angle during tilt calibration](docs/images/calibrating_tilt.png) | ![Touchscreen split into eight directions with a central action area](docs/images/touch.svg) |
+| ![Holding the console at the playing angle during tilt calibration](docs/images/calibrating_tilt.png) | ![Touchscreen split into eight directions with a central action area](docs/images/touch.png) |
 
 | BLE pairing | BLE connected | Shake key selector |
 | --- | --- | --- |
