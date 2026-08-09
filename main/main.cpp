@@ -162,9 +162,9 @@ constexpr game_profile_t kGames[] = {
      STARTUP_NONE},
     {"KILLER GORILLA", "PWR: JUMP   BTN: SPACE/REPLAY",
      BC32_DISC_KILLER_GORILLA,
-     {key(6, 1), key(4, 2), key(6, 8), key(4, 8)},
-     {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
-     STARTUP_SPACES(3), 150, true, 0, 500},
+     {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
+     {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(6, 2),
+     STARTUP_SPACES(3), 150, true, 0, 300},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(4, 9),
@@ -1444,11 +1444,11 @@ void apply_action(const bc32_input_event_t &event)
     set_matrix_key(action_key_down[slot], true);
     if (active_game->disc == BC32_DISC_KILLER_GORILLA &&
         !event.action.secondary &&
-        startup_action_count >= active_game->startup_key_count) {
+        selected.valid && selected.row == 4 && selected.column == 9) {
         // Killer Gorilla samples RETURN in narrow windows. Three short pulses
         // make one physical press reliable without leaving the key held.
         killer_jump_pulse_phase = 1;
-        killer_jump_pulse_deadline = bbc_core_frame_count() + 2;
+        killer_jump_pulse_deadline = bbc_core_frame_count() + 4;
     }
     // In Keyboard mode keep joystick fire inactive. Elite permanently switches
     // its primary flight controls from keyboard to analogue joystick as soon
@@ -1473,7 +1473,11 @@ void service_killer_jump_pulse()
         killer_jump_pulse_deadline = 0;
     } else {
         ++killer_jump_pulse_phase;
-        killer_jump_pulse_deadline = frame + 2;
+        // Hold RETURN for four fields, but leave only a one-field release gap
+        // so at least one pulse crosses the game's keyboard polling window.
+        const bool next_is_press = killer_jump_pulse_phase == 2 ||
+                                   killer_jump_pulse_phase == 4;
+        killer_jump_pulse_deadline = frame + (next_is_press ? 1 : 4);
     }
 }
 
