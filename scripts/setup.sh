@@ -27,7 +27,8 @@ fi
 uv pip install --python "$PROJECT_ROOT/.venv/bin/python" \
     --constraint "$CONSTRAINTS" \
     -r "$IDF_PATH/tools/requirements/requirements.core.txt"
-uv pip install --python "$PROJECT_ROOT/.venv/bin/python" "Pillow>=11,<13"
+uv pip install --python "$PROJECT_ROOT/.venv/bin/python" \
+    "Pillow>=11,<13" "pyserial>=3.5,<4"
 
 export IDF_PATH IDF_TOOLS_PATH
 "$PROJECT_ROOT/.venv/bin/python" "$IDF_PATH/tools/idf_tools.py" \

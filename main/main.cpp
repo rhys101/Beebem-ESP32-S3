@@ -2,12 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include "bbc_core.h"
 #include "bc32_audio.h"
 #include "bc32_assets.h"
 #include "bc32_input.h"
 #include "display.h"
 #include "driver/i2c_master.h"
+#include "driver/usb_serial_jtag.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -48,6 +51,7 @@ constexpr int64_t kFieldPeriodUs = 20000;
 constexpr int64_t kDisplayPeriodUs = 40000;
 constexpr int64_t kStatsPeriodUs = 2000000;
 constexpr char kStoragePath[] = "/storage";
+constexpr size_t kFrameBytes = BBC_FRAME_WIDTH * BBC_FRAME_HEIGHT;
 
 i2c_master_bus_handle_t i2c_bus;
 volatile uint32_t emulated_fields;
@@ -60,6 +64,8 @@ uint16_t source_x[kViewportWidth];
 uint16_t palette[8];
 const uint8_t *launcher_font;
 wl_handle_t storage_wl_handle = WL_INVALID_HANDLE;
+const uint8_t *volatile screenshot_source;
+bool screenshot_capture_active;
 
 struct matrix_key_t {
     uint8_t row;
@@ -429,6 +435,11 @@ void init_scaler()
 
 void render_frame(const uint8_t *framebuffer)
 {
+    // Publishing the pointer is effectively free during ordinary play. The
+    // opt-in serial capture task makes its own short-lived copy before it
+    // compresses a frame, so panel DMA and emulation never wait for USB.
+    __atomic_store_n(&screenshot_source, framebuffer, __ATOMIC_RELEASE);
+
     for (int band = 0; band < DISPLAY_BAND_COUNT; ++band) {
         uint16_t *destination = display_acquire_band();
         const int band_y = band * DISPLAY_BAND_ROWS;
@@ -455,6 +466,136 @@ void render_frame(const uint8_t *framebuffer)
         }
 
         ESP_ERROR_CHECK(display_flush_band(band, destination));
+    }
+}
+
+uint32_t screenshot_hash(const uint8_t *data, size_t size)
+{
+    uint32_t hash = 2166136261U;
+    for (size_t offset = 0; offset < size; ++offset) {
+        hash ^= data[offset];
+        hash *= 16777619U;
+    }
+    return hash;
+}
+
+size_t encode_screenshot_rle(const uint8_t *source, uint8_t *destination)
+{
+    size_t source_offset = 0;
+    size_t destination_offset = 0;
+    while (source_offset < kFrameBytes) {
+        const uint8_t colour = source[source_offset] & 7U;
+        size_t run = 1;
+        while (run < 32 && source_offset + run < kFrameBytes &&
+               (source[source_offset + run] & 7U) == colour) {
+            ++run;
+        }
+        destination[destination_offset++] =
+            static_cast<uint8_t>((colour << 5U) | (run - 1U));
+        source_offset += run;
+    }
+    return destination_offset;
+}
+
+bool usb_write_all(const void *data, size_t size)
+{
+    const auto *bytes = static_cast<const uint8_t *>(data);
+    size_t written = 0;
+    while (written < size) {
+        // The driver's FreeRTOS ring buffer stores each write as one item, so
+        // an item must be comfortably smaller than its 4096-byte capacity.
+        const size_t chunk = std::min<size_t>(size - written, 1024);
+        const int count = usb_serial_jtag_write_bytes(
+            bytes + written, chunk, pdMS_TO_TICKS(2000));
+        if (count <= 0) return false;
+        written += static_cast<size_t>(count);
+    }
+    return true;
+}
+
+void emit_screenshot(uint8_t *snapshot, uint8_t *encoded, unsigned sequence)
+{
+    const uint8_t *source =
+        __atomic_load_n(&screenshot_source, __ATOMIC_ACQUIRE);
+    if (source == nullptr) return;
+
+    // The copy takes well under a display period. A frame caught exactly on a
+    // launcher transition may contain that transition, which is useful when
+    // reviewing an automatic sequence and harmless because later frames stay.
+    memcpy(snapshot, source, kFrameBytes);
+    const size_t encoded_size = encode_screenshot_rle(snapshot, encoded);
+    const uint32_t hash = screenshot_hash(encoded, encoded_size);
+
+    char header[96];
+    const int header_size = snprintf(
+        header, sizeof(header), "\nBC32_FRAME %u %lld %u %08lx\n", sequence,
+        static_cast<long long>(esp_timer_get_time() / 1000),
+        static_cast<unsigned>(encoded_size), static_cast<unsigned long>(hash));
+
+    // Keep the binary envelope free from periodic emulator/BLE log messages.
+    esp_log_level_set("*", ESP_LOG_NONE);
+    constexpr char kFrameEnd[] = "\nBC32_END\n";
+    const bool ok = header_size > 0 &&
+                    usb_write_all(header, static_cast<size_t>(header_size)) &&
+                    usb_write_all(encoded, encoded_size) &&
+                    usb_write_all(kFrameEnd, sizeof(kFrameEnd) - 1);
+    if (ok) usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(5000));
+    esp_log_level_set("*", ESP_LOG_INFO);
+    if (!ok) ESP_LOGW(kTag, "USB screenshot transfer failed");
+}
+
+void screenshot_command_task(void *)
+{
+    usb_serial_jtag_driver_config_t config = {
+        .tx_buffer_size = 4096,
+        .rx_buffer_size = 256,
+    };
+    const esp_err_t driver_result = usb_serial_jtag_driver_install(&config);
+    if (driver_result != ESP_OK && driver_result != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "screenshot USB driver unavailable: %s",
+                 esp_err_to_name(driver_result));
+        vTaskDelete(nullptr);
+    }
+
+    auto *snapshot = static_cast<uint8_t *>(
+        heap_caps_malloc(kFrameBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    auto *encoded = static_cast<uint8_t *>(
+        heap_caps_malloc(kFrameBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (snapshot == nullptr || encoded == nullptr) {
+        ESP_LOGW(kTag, "not enough PSRAM for screenshot capture");
+        heap_caps_free(snapshot);
+        heap_caps_free(encoded);
+        vTaskDelete(nullptr);
+    }
+
+    char command[48] = {};
+    size_t command_size = 0;
+    unsigned sequence = 0;
+    for (;;) {
+        uint8_t byte = 0;
+        const int received = usb_serial_jtag_read_bytes(
+            &byte, 1, pdMS_TO_TICKS(250));
+        if (received <= 0) continue;
+        if (byte == '\r') continue;
+        if (byte != '\n' && command_size + 1 < sizeof(command)) {
+            command[command_size++] = static_cast<char>(byte);
+            continue;
+        }
+
+        command[command_size] = '\0';
+        if (strcmp(command, "BC32_CAPTURE_START") == 0) {
+            screenshot_capture_active = true;
+            constexpr char kReady[] = "\nBC32_CAPTURE_READY 640 256 8\n";
+            usb_write_all(kReady, sizeof(kReady) - 1);
+        } else if (strcmp(command, "BC32_CAPTURE_STOP") == 0) {
+            screenshot_capture_active = false;
+            constexpr char kStopped[] = "\nBC32_CAPTURE_STOPPED\n";
+            usb_write_all(kStopped, sizeof(kStopped) - 1);
+        } else if (strcmp(command, "BC32_SCREENSHOT") == 0 &&
+                   screenshot_capture_active) {
+            emit_screenshot(snapshot, encoded, sequence++);
+        }
+        command_size = 0;
     }
 }
 
@@ -1637,13 +1778,12 @@ extern "C" void app_main(void)
         ESP_LOGW(kTag, "audio unavailable: %s", esp_err_to_name(audio_result));
     }
 
-    constexpr size_t frame_bytes = BBC_FRAME_WIDTH * BBC_FRAME_HEIGHT;
     auto *framebuffer_a = static_cast<uint8_t *>(
-        heap_caps_calloc(frame_bytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        heap_caps_calloc(kFrameBytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     auto *framebuffer_b = static_cast<uint8_t *>(
-        heap_caps_calloc(frame_bytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        heap_caps_calloc(kFrameBytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     auto *display_snapshot = static_cast<uint8_t *>(
-        heap_caps_calloc(frame_bytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        heap_caps_calloc(kFrameBytes, 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     ESP_ERROR_CHECK(framebuffer_a != nullptr && framebuffer_b != nullptr &&
                             display_snapshot != nullptr
                         ? ESP_OK
@@ -1660,6 +1800,9 @@ extern "C" void app_main(void)
                         : ESP_FAIL);
     input_queue = xQueueCreate(64, sizeof(bc32_input_event_t));
     ESP_ERROR_CHECK(input_queue != nullptr ? ESP_OK : ESP_ERR_NO_MEM);
+    const BaseType_t screenshot_task_created = xTaskCreatePinnedToCore(
+        screenshot_command_task, "screenshots", 4096, nullptr, 3, nullptr, 0);
+    ESP_ERROR_CHECK(screenshot_task_created == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
     esp_err_t input_result = bc32_motion_input_init(i2c_bus, queue_input, nullptr);
     motion_input_available = input_result == ESP_OK;
@@ -1750,7 +1893,7 @@ extern "C" void app_main(void)
             // The completed double-buffer remains untouched for the following
             // BBC field, so this short copy is stable without holding up the
             // emulation task while the panel transfer runs.
-            memcpy(display_snapshot, bbc_core_framebuffer(), frame_bytes);
+            memcpy(display_snapshot, bbc_core_framebuffer(), kFrameBytes);
             if (character_picker_is_active()) {
                 render_character_picker(display_snapshot);
             }

@@ -214,7 +214,9 @@ ASAN_OPTIONS=detect_leaks=0 tests/host/build-asan/bc32_host \
 ```
 
 See [testing](docs/TESTING.md), [architecture](docs/ARCHITECTURE.md), and
-[port provenance](docs/UPSTREAM.md) for more detail.
+[port provenance](docs/UPSTREAM.md) for more detail. Maintainers can use the
+[USB screenshot workflow](docs/SCREENSHOTS.md) to capture real launcher and
+game frames for this README.
 
 ## Licensing
 

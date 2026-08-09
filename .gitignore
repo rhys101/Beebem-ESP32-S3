@@ -1,5 +1,6 @@
 build/
 dist/
+captures/
 sdkconfig
 sdkconfig.old
 .cache/
