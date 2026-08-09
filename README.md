@@ -172,8 +172,9 @@ sector stays electrically down, giving normal BBC keyboard repeat.
 This is a BLE HID host, not Bluetooth Classic. Put the keyboard into pairing
 mode. When a six-digit code appears on the AMOLED, type those digits on the
 keyboard and press **Return**. The launcher confirms **BLE KEYBOARD CONNECTED**,
-unlocks Keyboard, and selects it by default. On a Logitech Pebble Keys K380s,
-hold one Easy-Switch key until its light flashes rapidly before pairing.
+unlocks Keyboard, and selects it by default. This firmware has been tested with
+the **Logitech Pebble Keys 2 K380s**. On that keyboard, hold one Easy-Switch key
+until its light flashes rapidly before pairing.
 
 Normal characters, Shift/Ctrl, BBC function keys, and cursor keys are mapped to
 the BBC matrix. F12 or Pause sends BREAK. The top-right Delete/lock key returns
