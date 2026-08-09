@@ -174,7 +174,7 @@ static void motion_task(void *argument)
                     sqrtf(delta_x * delta_x + delta_y * delta_y +
                           delta_z * delta_z);
                 const int64_t now_us = esp_timer_get_time();
-                if (jerk >= 4.0f && now_us >= shake_cooldown_until_us) {
+                if (jerk >= 5.0f && now_us >= shake_cooldown_until_us) {
                     if (shake_impulses == 0 ||
                         now_us - shake_window_start_us > 600000) {
                         shake_impulses = 1;
