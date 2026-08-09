@@ -317,9 +317,9 @@ void bc32_motion_input_set_sensitivity(uint16_t horizontal_percent,
                                        uint16_t vertical_percent)
 {
     if (horizontal_percent < 10) horizontal_percent = 10;
-    if (horizontal_percent > 300) horizontal_percent = 300;
+    if (horizontal_percent > 500) horizontal_percent = 500;
     if (vertical_percent < 10) vertical_percent = 10;
-    if (vertical_percent > 300) vertical_percent = 300;
+    if (vertical_percent > 500) vertical_percent = 500;
     __atomic_store_n(&s_horizontal_sensitivity_percent, horizontal_percent,
                      __ATOMIC_RELEASE);
     __atomic_store_n(&s_vertical_sensitivity_percent, vertical_percent,
