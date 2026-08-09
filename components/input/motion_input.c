@@ -25,7 +25,8 @@ static bc32_input_callback_t s_callback;
 static void *s_callback_context;
 static volatile bool s_recalibrate_requested;
 static volatile bool s_calibrating;
-static volatile uint32_t s_sensitivity_percent = 100;
+static volatile uint32_t s_horizontal_sensitivity_percent = 100;
+static volatile uint32_t s_vertical_sensitivity_percent = 100;
 static volatile bool s_allow_diagonals = true;
 
 static void emit_direction(bc32_direction_t direction, bool down)
@@ -209,12 +210,16 @@ static void motion_task(void *argument)
                 filtered_y += 0.50f * (motion_y - filtered_y);
             }
 
-            const float sensitivity =
-                (float)__atomic_load_n(&s_sensitivity_percent,
+            const float horizontal_sensitivity =
+                (float)__atomic_load_n(&s_horizontal_sensitivity_percent,
                                        __ATOMIC_ACQUIRE) /
                 100.0f;
-            const float control_x = filtered_x * sensitivity;
-            const float control_y = filtered_y * sensitivity;
+            const float vertical_sensitivity =
+                (float)__atomic_load_n(&s_vertical_sensitivity_percent,
+                                       __ATOMIC_ACQUIRE) /
+                100.0f;
+            const float control_x = filtered_x * horizontal_sensitivity;
+            const float control_y = filtered_y * vertical_sensitivity;
             const bc32_input_event_t joystick = {
                 .kind = BC32_INPUT_JOYSTICK,
                 // BBC analogue inputs use zero at right/down.
@@ -252,10 +257,14 @@ static void motion_task(void *argument)
             update_direction(&down, next_down, BC32_DIRECTION_DOWN, "down");
 
             if (++log_count == 100) {
-                ESP_LOGI(TAG, "relative tilt %.1f %.1f degrees at %u%% -> joystick %u,%u",
+                ESP_LOGI(TAG, "relative tilt %.1f %.1f degrees at %u/%u%% -> joystick %u,%u",
                          (double)filtered_x, (double)filtered_y,
-                         (unsigned)__atomic_load_n(&s_sensitivity_percent,
-                                                   __ATOMIC_RELAXED),
+                         (unsigned)__atomic_load_n(
+                             &s_horizontal_sensitivity_percent,
+                             __ATOMIC_RELAXED),
+                         (unsigned)__atomic_load_n(
+                             &s_vertical_sensitivity_percent,
+                             __ATOMIC_RELAXED),
                          joystick.joystick.x, joystick.joystick.y);
                 log_count = 0;
             }
@@ -304,12 +313,19 @@ esp_err_t bc32_motion_input_init(i2c_master_bus_handle_t bus,
     return ESP_OK;
 }
 
-void bc32_motion_input_set_sensitivity(uint16_t percent)
+void bc32_motion_input_set_sensitivity(uint16_t horizontal_percent,
+                                       uint16_t vertical_percent)
 {
-    if (percent < 10) percent = 10;
-    if (percent > 300) percent = 300;
-    __atomic_store_n(&s_sensitivity_percent, percent, __ATOMIC_RELEASE);
-    ESP_LOGI(TAG, "tilt sensitivity set to %u%%", (unsigned)percent);
+    if (horizontal_percent < 10) horizontal_percent = 10;
+    if (horizontal_percent > 300) horizontal_percent = 300;
+    if (vertical_percent < 10) vertical_percent = 10;
+    if (vertical_percent > 300) vertical_percent = 300;
+    __atomic_store_n(&s_horizontal_sensitivity_percent, horizontal_percent,
+                     __ATOMIC_RELEASE);
+    __atomic_store_n(&s_vertical_sensitivity_percent, vertical_percent,
+                     __ATOMIC_RELEASE);
+    ESP_LOGI(TAG, "tilt sensitivity set to horizontal %u%%, vertical %u%%",
+             (unsigned)horizontal_percent, (unsigned)vertical_percent);
 }
 
 void bc32_motion_input_set_allow_diagonals(bool allow)

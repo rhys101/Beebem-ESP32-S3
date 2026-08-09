@@ -10,7 +10,6 @@
 #define EXPANDER_CONFIG_REGISTER 0x03
 #define POWER_BUTTON_BIT (1U << 4)
 #define SHORT_PRESS_MAX_MS 1500
-#define SECONDARY_PRESS_MIN_MS 600
 #define KEY_HOLD_MS 80
 
 static const char *TAG = "power_button";
@@ -75,7 +74,9 @@ static void button_task(void *argument)
                              (long long)held_ms, input);
                     if (held_ms <= SHORT_PRESS_MAX_MS) {
                         if (action_held) emit_action(action_secondary, false);
-                        action_secondary = held_ms >= SECONDARY_PRESS_MIN_MS;
+                        // The board has a dedicated BOOT/secondary button.
+                        // Keep PWR unambiguously primary even on a relaxed tap.
+                        action_secondary = false;
                         emit_action(action_secondary, true);
                         action_held = true;
                         action_release_at =
@@ -125,7 +126,7 @@ esp_err_t bc32_power_button_init(i2c_master_bus_handle_t bus,
         return ESP_ERR_NO_MEM;
     }
     ESP_LOGI(TAG,
-             "PWR ready on EXIO4 (config 0x%02x, input 0x%02x); tap=primary, hold=secondary",
+             "PWR ready on EXIO4 (config 0x%02x, input 0x%02x); primary action",
              direction | POWER_BUTTON_BIT, input);
     return ESP_OK;
 }

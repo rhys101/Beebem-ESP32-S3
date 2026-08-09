@@ -74,9 +74,10 @@ bool bc32_ble_keyboard_connected(void);
 // Non-zero while a BLE keyboard is waiting for this passkey to be typed,
 // followed by Enter, on the keyboard itself.
 uint32_t bc32_ble_keyboard_pairing_passkey(void);
-// Percentage gain applied to calibrated tilt for both analogue and digital
-// movement. 100 is the normal response; lower values require a larger tilt.
-void bc32_motion_input_set_sensitivity(uint16_t percent);
+// Percentage gain applied to each calibrated tilt axis for analogue and
+// digital movement. 100 is normal; lower values require a larger tilt.
+void bc32_motion_input_set_sensitivity(uint16_t horizontal_percent,
+                                       uint16_t vertical_percent);
 void bc32_motion_input_set_allow_diagonals(bool allow);
 void bc32_motion_input_recalibrate(void);
 bool bc32_motion_input_is_calibrating(void);

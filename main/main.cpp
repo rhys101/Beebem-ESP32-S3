@@ -99,6 +99,7 @@ struct game_profile_t {
     uint16_t tilt_sensitivity_percent = 100;
     bool allow_diagonals = true;
     uint8_t direction_repeat_fields = 0;
+    uint16_t tilt_vertical_sensitivity_percent = 0;
 };
 
 #define STARTUP_SPACES(count) \
@@ -159,7 +160,7 @@ constexpr game_profile_t kGames[] = {
      BC32_DISC_KILLER_GORILLA,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
-     STARTUP_SPACES(3), 150},
+     STARTUP_SPACES(3), 150, true, 0, 300},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(4, 9),
@@ -1124,8 +1125,13 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
             ESP_LOGI(kTag, "launcher selected %s with %s input",
                      kGames[selected_game].name,
                      input_mode_name(*mode));
+            const uint16_t vertical_sensitivity =
+                kGames[selected_game].tilt_vertical_sensitivity_percent != 0
+                    ? kGames[selected_game].tilt_vertical_sensitivity_percent
+                    : kGames[selected_game].tilt_sensitivity_percent;
             bc32_motion_input_set_sensitivity(
-                kGames[selected_game].tilt_sensitivity_percent);
+                kGames[selected_game].tilt_sensitivity_percent,
+                vertical_sensitivity);
             bc32_motion_input_set_allow_diagonals(
                 kGames[selected_game].allow_diagonals);
             if (*mode == input_mode_t::tilt && motion_input_available) {
