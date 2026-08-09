@@ -2,7 +2,7 @@
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-VERSION=${BEEBEM_VERSION:-v1}
+VERSION=${BEEBEM_VERSION:-v1.1}
 RELEASE_IMAGE="$PROJECT_ROOT/dist/beebem-esp32-s3-$VERSION.bin"
 mkdir -p "$PROJECT_ROOT/dist"
 "$PROJECT_ROOT/scripts/idf.sh" build
@@ -20,5 +20,6 @@ fi
     0x8000 "$PROJECT_ROOT/build/partition_table/partition-table.bin" \
     0x10000 "$APP_BIN"
 
-shasum -a 256 "$RELEASE_IMAGE" > "$RELEASE_IMAGE.sha256"
+(cd "$PROJECT_ROOT/dist" && shasum -a 256 "$(basename "$RELEASE_IMAGE")") \
+    > "$RELEASE_IMAGE.sha256"
 echo "Release image: $RELEASE_IMAGE"
