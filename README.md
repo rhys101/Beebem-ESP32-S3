@@ -47,7 +47,7 @@ redistribution permissions. A full image is deliberately paired with the exact
 source tag from which it was built.
 
 1. Download the complete v1 image from
-   [https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin](https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin).
+   [beebem.webassembly.link](https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.bin).
 2. Connect the board's USB-C data port. Normally no button is needed; if the
    port is absent, hold **BOOT**, tap **RESET**, then release **BOOT**.
 3. Install [uv](https://docs.astral.sh/uv/) and list the serial port:
