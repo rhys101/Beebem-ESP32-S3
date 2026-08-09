@@ -50,6 +50,7 @@ constexpr int kLauncherModeTouchTop = DISPLAY_LOGICAL_HEIGHT * 2 / 3;
 constexpr int64_t kFieldPeriodUs = 20000;
 constexpr int64_t kDisplayPeriodUs = 40000;
 constexpr int64_t kStatsPeriodUs = 2000000;
+constexpr int64_t kLauncherTouchReleaseGuardUs = 150000;
 constexpr char kStoragePath[] = "/storage";
 constexpr size_t kFrameBytes = BBC_FRAME_WIDTH * BBC_FRAME_HEIGHT;
 
@@ -947,6 +948,12 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
     int touch_start_y = 0;
     int touch_last_x = 0;
     int touch_last_y = 0;
+    // A touch that selected RESTART can still be reported for a few scan
+    // periods after the game/launcher transition. Require a quiet release
+    // window before accepting launcher touches, otherwise that same contact
+    // can become an unintended tap on the central Play button.
+    bool launcher_touch_armed = false;
+    int64_t touch_quiet_since_us = esp_timer_get_time();
 
     for (;;) {
         bc32_input_event_t event{};
@@ -981,7 +988,21 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
                             keyboard_connected);
             render_frame(framebuffer);
         }
+
+        const int64_t input_now_us = esp_timer_get_time();
+        if (!launcher_touch_armed &&
+            input_now_us - touch_quiet_since_us >=
+                kLauncherTouchReleaseGuardUs) {
+            launcher_touch_armed = true;
+            ESP_LOGI(kTag, "launcher touch armed after release");
+        }
         if (!have_event) continue;
+
+        if (event.kind == BC32_INPUT_TOUCH && !launcher_touch_armed) {
+            touch_quiet_since_us = input_now_us;
+            touch_down = false;
+            continue;
+        }
 
         bool redraw = false;
         bool launch = false;
