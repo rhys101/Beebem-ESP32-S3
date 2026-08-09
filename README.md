@@ -1,5 +1,7 @@
 # BeebEm ESP32-S3
 
+![BeebEm ESP32-S3 running Chuckie Egg on the Waveshare Touch AMOLED](docs/images/social-preview.png)
+
 A self-contained BBC Micro Model B emulator port for the
 [Waveshare ESP32-S3-Touch-AMOLED-1.8 V2](https://www.waveshare.com/esp32-s3-touch-amoled-1.8.htm).
 It runs the Linux/SDL BeebEm core directly on the ESP32-S3, presents a centred
