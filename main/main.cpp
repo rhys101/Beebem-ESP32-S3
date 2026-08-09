@@ -52,6 +52,7 @@ constexpr int64_t kDisplayPeriodUs = 40000;
 constexpr int64_t kStatsPeriodUs = 2000000;
 constexpr int64_t kLauncherTouchReleaseGuardUs = 150000;
 constexpr int64_t kLauncherInputGuardUs = 300000;
+constexpr int64_t kTiltBootGuardUs = 3000000;
 constexpr char kStoragePath[] = "/storage";
 constexpr size_t kFrameBytes = BBC_FRAME_WIDTH * BBC_FRAME_HEIGHT;
 
@@ -61,6 +62,7 @@ volatile uint32_t displayed_frames;
 bool emulator_paused;
 bool emulator_pause_acknowledged;
 bool launcher_requested;
+int64_t tilt_input_enable_at_us;
 QueueHandle_t input_queue;
 uint16_t source_x[kViewportWidth];
 uint16_t palette[8];
@@ -101,6 +103,7 @@ struct game_profile_t {
     uint8_t direction_repeat_fields = 0;
     uint16_t tilt_vertical_sensitivity_percent = 0;
     uint8_t direction_pulse_fields = 0;
+    uint8_t tilt_pulse_repeat_fields = 0;
     uint8_t action_min_hold_fields = 0;
 };
 
@@ -162,7 +165,7 @@ constexpr game_profile_t kGames[] = {
      BC32_DISC_KILLER_GORILLA,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
-     STARTUP_SPACES(3), 150, true, 0, 500, 0, 12},
+     STARTUP_SPACES(3), 150, true, 0, 500, 0, 0, 12},
     {"MR. EE!", "MOVE: Z X : /   PWR: FIRE", BC32_DISC_MR_EE,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(4, 9),
@@ -183,7 +186,7 @@ constexpr game_profile_t kGames[] = {
     {"BBC TETRIS", "Z/X MOVE   BUTTONS: ROTATE DROP", BC32_DISC_BBC_TETRIS,
      {key(6, 1), key(4, 2), no_key(), no_key()},
      {no_key(), no_key(), no_key(), no_key()}, key(4, 9), key(6, 2),
-     {key(3, 0), no_key(), no_key()}, 1, false, 67, true, 0, 0, 3},
+     {key(3, 0), no_key(), no_key()}, 1, false, 67, true, 0, 0, 3, 15},
     {"CITADEL", "MOVE: Z X * ?   BUTTONS: RETURN SPACE", BC32_DISC_CITADEL,
      {key(6, 1), key(4, 2), key(4, 8), key(6, 8)},
      {no_key(), no_key(), key(0, 0), key(0, 0)}, key(4, 9), key(6, 2),
@@ -1262,12 +1265,21 @@ void service_direction_repeat()
         const matrix_key_t direction_key = active_game->direction[direction];
         if (input_mode == input_mode_t::tilt &&
             active_game->direction_pulse_fields != 0) {
-            if (!direction_repeat_released[direction]) {
+            if (direction_repeat_released[direction]) {
+                set_matrix_key(modifier, true);
+                set_matrix_key(direction_key, true);
+                direction_repeat_released[direction] = false;
+                direction_repeat_deadline[direction] =
+                    frame + active_game->direction_pulse_fields;
+            } else {
                 set_matrix_key(direction_key, false);
                 set_matrix_key(modifier, false);
                 direction_repeat_released[direction] = true;
+                direction_repeat_deadline[direction] =
+                    active_game->tilt_pulse_repeat_fields != 0
+                        ? frame + active_game->tilt_pulse_repeat_fields
+                        : 0;
             }
-            direction_repeat_deadline[direction] = 0;
         } else if (direction_repeat_released[direction]) {
             set_matrix_key(modifier, true);
             set_matrix_key(direction_key, true);
@@ -1768,7 +1780,8 @@ void apply_pending_input()
             }
             break;
         case BC32_INPUT_JOYSTICK:
-            if (input_mode == input_mode_t::tilt) {
+            if (input_mode == input_mode_t::tilt &&
+                esp_timer_get_time() >= tilt_input_enable_at_us) {
                 bbc_core_set_joystick(event.joystick.x, event.joystick.y);
             }
             break;
@@ -1779,7 +1792,8 @@ void apply_pending_input()
             if (input_mode == input_mode_t::keyboard) bbc_core_reset();
             break;
         case BC32_INPUT_DIRECTION:
-            if (input_mode == input_mode_t::tilt) {
+            if (input_mode == input_mode_t::tilt &&
+                esp_timer_get_time() >= tilt_input_enable_at_us) {
                 set_game_direction(event.direction.direction,
                                    event.direction.down);
             }
@@ -1958,6 +1972,10 @@ extern "C" void app_main(void)
         // suspend flash/PSRAM access. Finish it before the 6502 and 8271 begin
         // executing so disc boot is deterministic on every cold start.
         bbc_core_shift_break();
+        // Motion producers resume immediately, but direction keys present
+        // during SHIFT+BREAK can cancel autoboot and then type Z/X/*/? at the
+        // BASIC prompt. Keep tilt neutral until the DFS boot hand-off is safe.
+        tilt_input_enable_at_us = esp_timer_get_time() + kTiltBootGuardUs;
         __atomic_store_n(&launcher_requested, false, __ATOMIC_RELEASE);
         if (!emulator_started) {
             const BaseType_t created = xTaskCreatePinnedToCore(
