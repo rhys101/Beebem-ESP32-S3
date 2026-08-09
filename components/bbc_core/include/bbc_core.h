@@ -47,6 +47,7 @@ void bbc_core_reset(void);
 /* BBC keyboard matrix access (row/column are BeebEm matrix coordinates). */
 void bbc_core_key_down(int row, int column);
 void bbc_core_key_up(int row, int column);
+void bbc_core_release_all_keys(void);
 void bbc_core_set_joystick(uint16_t x, uint16_t y);
 void bbc_core_set_joystick_button(bool down);
 

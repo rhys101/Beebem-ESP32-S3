@@ -123,6 +123,7 @@ void bbc_core_shift_break(void)
 
 void bbc_core_key_down(int row, int column) { BeebKeyDown(row, column); }
 void bbc_core_key_up(int row, int column) { BeebKeyUp(row, column); }
+void bbc_core_release_all_keys(void) { BeebReleaseAllKeys(); }
 void bbc_core_set_joystick(uint16_t x, uint16_t y)
 {
     JoystickEnabled = 1;

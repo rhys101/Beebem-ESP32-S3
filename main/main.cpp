@@ -51,6 +51,7 @@ constexpr int64_t kFieldPeriodUs = 20000;
 constexpr int64_t kDisplayPeriodUs = 40000;
 constexpr int64_t kStatsPeriodUs = 2000000;
 constexpr int64_t kLauncherTouchReleaseGuardUs = 150000;
+constexpr int64_t kLauncherInputGuardUs = 300000;
 constexpr char kStoragePath[] = "/storage";
 constexpr size_t kFrameBytes = BBC_FRAME_WIDTH * BBC_FRAME_HEIGHT;
 
@@ -944,6 +945,11 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
         render_frame(framebuffer);
     }
 
+    // Input producers continue running while notices are displayed. Discard
+    // anything accumulated during the transition so a stale action/key press
+    // cannot immediately launch the game shown underneath the notice.
+    xQueueReset(input_queue);
+
     bool touch_down = false;
     int touch_start_x = 0;
     int touch_start_y = 0;
@@ -955,10 +961,12 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
     // can become an unintended tap on the central Play button.
     bool launcher_touch_armed = false;
     int64_t touch_quiet_since_us = esp_timer_get_time();
+    int64_t launcher_input_guard_until_us =
+        touch_quiet_since_us + kLauncherInputGuardUs;
 
     for (;;) {
         bc32_input_event_t event{};
-        const bool have_event =
+        bool have_event =
             xQueueReceive(input_queue, &event, pdMS_TO_TICKS(250)) == pdTRUE;
         const bool connected = bc32_ble_keyboard_connected();
         const uint32_t passkey = bc32_ble_keyboard_pairing_passkey();
@@ -988,6 +996,13 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
             render_launcher(framebuffer, selected_game, *mode,
                             keyboard_connected);
             render_frame(framebuffer);
+            xQueueReset(input_queue);
+            have_event = false;
+            launcher_touch_armed = false;
+            touch_down = false;
+            touch_quiet_since_us = esp_timer_get_time();
+            launcher_input_guard_until_us =
+                touch_quiet_since_us + kLauncherInputGuardUs;
         }
 
         const int64_t input_now_us = esp_timer_get_time();
@@ -1002,6 +1017,12 @@ unsigned run_launcher(uint8_t *framebuffer, uint8_t *incoming,
         if (event.kind == BC32_INPUT_TOUCH && !launcher_touch_armed) {
             touch_quiet_since_us = input_now_us;
             touch_down = false;
+            continue;
+        }
+        if (input_now_us < launcher_input_guard_until_us &&
+            ((event.kind == BC32_INPUT_KEY && event.key.down) ||
+             (event.kind == BC32_INPUT_ACTION && event.action.down))) {
+            ESP_LOGI(kTag, "discarding carried input during launcher guard");
             continue;
         }
 
@@ -1534,14 +1555,11 @@ void request_game_chooser()
 
 void reset_game_session_state()
 {
-    for (unsigned row = 0; row < 8; ++row) {
-        for (unsigned column = 0; column < 10; ++column) {
-            if (matrix_key_holds[row][column] != 0) {
-                bbc_core_key_up(row, column);
-                matrix_key_holds[row][column] = 0;
-            }
-        }
-    }
+    // Clear BeebEm's matrix unconditionally as well as our reference counts.
+    // This recovers from any dropped release event or direct core key injection
+    // and guarantees that no key can repeat into the next disc's BASIC prompt.
+    bbc_core_release_all_keys();
+    memset(matrix_key_holds, 0, sizeof(matrix_key_holds));
     memset(direction_hold_count, 0, sizeof(direction_hold_count));
     memset(direction_repeat_released, 0, sizeof(direction_repeat_released));
     memset(direction_repeat_deadline, 0, sizeof(direction_repeat_deadline));
@@ -1708,7 +1726,9 @@ void apply_pending_input()
             break;
         case BC32_INPUT_GAME_CHOOSER:
             request_game_chooser();
-            break;
+            // Do not apply any events queued behind Restart to the old game.
+            // The main task will pause the core and reset the queue/state.
+            return;
         }
     }
 }
