@@ -48,8 +48,8 @@ Use a release only when its notes identify the included assets and their
 redistribution permissions. A full image is deliberately paired with the exact
 source tag from which it was built.
 
-1. Download the complete v1.1 image from
-   [beebem.webassembly.link](https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.1.bin).
+1. Download the complete v1.3 image from
+   [beebem.webassembly.link](https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.3.bin).
 2. Connect the board's USB-C data port. Normally no button is needed; if the
    port is absent, hold **BOOT**, tap **RESET**, then release **BOOT**.
 3. Install [uv](https://docs.astral.sh/uv/) and list the serial port:
@@ -72,7 +72,7 @@ source tag from which it was built.
    PORT=$(find /dev -maxdepth 1 -name 'cu.usbmodem*' -print | head -n 1)
    test -n "$PORT" || { echo "No ESP32-S3 serial port found" >&2; exit 1; }
    curl --fail --location \
-     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.1.bin --output "$IMAGE"
+     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.3.bin --output "$IMAGE"
    uvx --from esptool esptool --chip esp32s3 --port "$PORT" --baud 460800 \
      write-flash 0x0 "$IMAGE"
    ```
@@ -86,7 +86,7 @@ source tag from which it was built.
    PORT=$(find /dev -maxdepth 1 -name 'ttyACM*' -print | head -n 1)
    test -n "$PORT" || { echo "No ESP32-S3 serial port found" >&2; exit 1; }
    curl --fail --location \
-     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.1.bin --output "$IMAGE"
+     https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.3.bin --output "$IMAGE"
    uvx --from esptool esptool --chip esp32s3 --port "$PORT" --baud 460800 \
      write-flash 0x0 "$IMAGE"
    ```
@@ -126,14 +126,14 @@ setup and invoke commands with `IDF_PATH=/path/to/esp-idf` and, if needed,
 `IDF_TOOLS_PATH=/path/to/tools`. `scripts/idf.sh` resolves everything else from
 the repository location.
 
-To make the single binary used by GitHub releases:
+To make the single binary used for hosted releases:
 
 ```sh
 scripts/build-release.sh
 scripts/flash-release.sh PORT
 ```
 
-This produces `dist/beebem-esp32-s3-v1.1.bin` plus a SHA-256 file. Both `dist/`
+This produces `dist/beebem-esp32-s3-v1.3.bin` plus a SHA-256 file. Both `dist/`
 and all installed media are ignored by Git.
 
 For a new checkout, setup + archive fetch + build + flash is one command:

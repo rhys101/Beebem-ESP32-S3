@@ -7,7 +7,7 @@ if [ -z "$PORT" ]; then
     exit 2
 fi
 
-IMAGE_URL=${BEEBEM_IMAGE_URL:-https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.1.bin}
+IMAGE_URL=${BEEBEM_IMAGE_URL:-https://beebem.webassembly.link/flash/beebem-esp32-s3-v1.3.bin}
 TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
 IMAGE="$TEMP_DIR/beebem-esp32-s3.bin"
